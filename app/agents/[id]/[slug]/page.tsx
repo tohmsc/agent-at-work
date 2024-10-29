@@ -5,12 +5,13 @@ import { Agent, agentSchema } from "../types";
 import { AgentPageClient } from "./client";
 import { generateAgentSlug } from "@/utils/slug";
 
-interface PageProps {
-  params: {
+type Props = {
+  params: Promise<{
     id: string;
     slug: string;
-  };
-}
+  }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
 
 async function getAgentById(id: string): Promise<Agent | null> {
   const supabase = await createClient();
@@ -31,8 +32,9 @@ async function getAgentById(id: string): Promise<Agent | null> {
   return parsedAgent.data;
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const agent = await getAgentById(params.id);
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const resolvedParams = await params;
+  const agent = await getAgentById(resolvedParams.id);
   
   if (!agent) {
     notFound();
@@ -44,15 +46,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function AgentPage({ params }: PageProps) {
-  const agent = await getAgentById(params.id);
+export default async function AgentPage({ params, searchParams }: Props) {
+  const resolvedParams = await params;
+  const agent = await getAgentById(resolvedParams.id);
   
   if (!agent) {
     notFound();
   }
 
   const expectedSlug = await generateAgentSlug(agent.company, agent.short_description);
-  if (params.slug !== expectedSlug) {
+  if (resolvedParams.slug !== expectedSlug) {
     notFound();
   }
 

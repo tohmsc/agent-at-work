@@ -30,14 +30,16 @@ async function generateAgentSlug(company: string, description: string): Promise<
     .slice(0, 50)}`;
 }
 
-interface PageProps {
-  params: {
+type PageProps = {
+  params: Promise<{
     id: string;
-  };
-}
+  }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
 
 export default async function AgentPageRedirect({ params }: PageProps) {
-  const agent = await getAgent(params.id);
+  const resolvedParams = await params;
+  const agent = await getAgent(resolvedParams.id);
   const slug = await generateAgentSlug(agent.company, agent.short_description);
-  redirect(`/agents/${params.id}/${slug}`);
+  redirect(`/agents/${resolvedParams.id}/${slug}`);
 }
