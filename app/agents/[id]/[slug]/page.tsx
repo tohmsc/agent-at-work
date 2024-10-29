@@ -6,10 +6,10 @@ import { AgentPageClient } from "./client";
 import { generateAgentSlug } from "@/utils/slug";
 
 interface PageProps {
-  params: Promise<{
+  params: {
     id: string;
     slug: string;
-  }>;
+  };
 }
 
 async function getAgentById(id: string): Promise<Agent | null> {
@@ -32,8 +32,7 @@ async function getAgentById(id: string): Promise<Agent | null> {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const resolvedParams = await params;
-  const agent = await getAgentById(resolvedParams.id);
+  const agent = await getAgentById(params.id);
   
   if (!agent) {
     notFound();
@@ -46,15 +45,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function AgentPage({ params }: PageProps) {
-  const resolvedParams = await params;
-  const agent = await getAgentById(resolvedParams.id);
+  const agent = await getAgentById(params.id);
   
   if (!agent) {
     notFound();
   }
 
   const expectedSlug = await generateAgentSlug(agent.company, agent.short_description);
-  if (resolvedParams.slug !== expectedSlug) {
+  if (params.slug !== expectedSlug) {
     notFound();
   }
 
