@@ -14,20 +14,33 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
-  const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
-  const response = NextResponse.next();
+  try {
+    const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
 
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value);
-  });
+    // For protected routes, redirect to sign-in if no auth cookie
+    if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
+      const redirectUrl = new URL("/sign-in", request.url);
+      return NextResponse.redirect(redirectUrl, {
+        headers: securityHeaders,
+      });
+    }
 
-  if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+    // For home route, redirect to protected if auth cookie exists
+    if (request.nextUrl.pathname === "/" && hasAuthCookie) {
+      const redirectUrl = new URL("/protected", request.url);
+      return NextResponse.redirect(redirectUrl, {
+        headers: securityHeaders,
+      });
+    }
+
+    // For all other routes, just add security headers
+    return NextResponse.next({
+      headers: securityHeaders,
+    });
+  } catch (error) {
+    // If there's an error, return response with security headers
+    return NextResponse.next({
+      headers: securityHeaders,
+    });
   }
-
-  if (request.nextUrl.pathname === "/" && hasAuthCookie) {
-    return NextResponse.redirect(new URL("/protected", request.url));
-  }
-
-  return response;
 }

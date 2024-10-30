@@ -10,7 +10,6 @@ const nextConfig = {
   },
   experimental: {
     serverComponentsExternalPackages: ['ua-parser-js'],
-    instrumentationHook: false
   }
 }
 
