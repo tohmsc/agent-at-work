@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 // Explicitly set edge runtime
-export const runtime = 'edge';
+export const runtime = 'experimental-edge';
 
 // Disable user agent parsing
 export const userAgent = false;
