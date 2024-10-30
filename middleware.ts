@@ -1,8 +1,7 @@
-import { createServerClient } from "@supabase/ssr";
+import { createClient } from '@/utils/supabase/client';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { securityHeaders } from './utils/security-headers';
-import { cookies } from 'next/headers';
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -17,19 +16,8 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    // Create supabase server client
-    const cookieStore = cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          get(name: string) {
-            return cookieStore.get(name)?.value;
-          },
-        },
-      }
-    );
+    // Create supabase client
+    const supabase = createClient(); // Remove `request`
 
     // Check auth status
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,9 +26,9 @@ export async function middleware(request: NextRequest) {
     const res = NextResponse.next();
 
     // Add security headers
-    for (const [key, value] of Object.entries(securityHeaders)) {
+    Object.entries(securityHeaders).forEach(([key, value]) => {
       res.headers.set(key, value);
-    }
+    });
 
     // Handle protected routes
     if (pathname.startsWith('/protected') && !session) {
@@ -58,6 +46,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
