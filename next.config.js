@@ -7,9 +7,6 @@ const nextConfig = {
         hostname: '**',
       },
     ],
-  },
-  experimental: {
-    serverComponentsExternalPackages: ['ua-parser-js'],
   }
 }
 
