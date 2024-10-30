@@ -3,6 +3,8 @@ import type { NextRequest } from "next/server";
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  runtime: 'edge',
+  regions: ['iad1'],
 };
 
 const securityHeaders = {
@@ -12,15 +14,13 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
-  const isProtectedRoute = request.nextUrl.pathname.startsWith("/protected");
-  const isHomePage = request.nextUrl.pathname === "/";
   const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
 
-  if (isProtectedRoute && !hasAuthCookie) {
+  if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 
-  if (isHomePage && hasAuthCookie) {
+  if (request.nextUrl.pathname === "/" && hasAuthCookie) {
     return NextResponse.redirect(new URL("/protected", request.url));
   }
 
