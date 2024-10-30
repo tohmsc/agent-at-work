@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// Explicitly set edge runtime
+export const runtime = 'edge';
+
+// Disable user agent parsing
+export const userAgent = false;
+
 export function middleware(request: NextRequest) {
   // Protected route check
   if (request.nextUrl.pathname.startsWith("/protected")) {
@@ -18,6 +24,9 @@ export function middleware(request: NextRequest) {
   return response;
 }
 
+// Simplified matcher
 export const config = {
-  matcher: '/((?!api|_next/static|_next/image|favicon.ico).*)'
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico).*)'
+  ]
 };
