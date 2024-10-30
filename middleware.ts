@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  runtime: 'nodejs'
 };
 
 const securityHeaders = {
@@ -14,21 +15,17 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
-  // Check for auth cookies
   const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
   const response = NextResponse.next();
 
-  // Apply security headers to all responses
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
 
-  // Handle protected routes
   if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
     return NextResponse.redirect(new URL("/sign-in", request.url));
   }
 
-  // Redirect authenticated users from home to protected area
   if (request.nextUrl.pathname === "/" && hasAuthCookie) {
     return NextResponse.redirect(new URL("/protected", request.url));
   }

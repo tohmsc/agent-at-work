@@ -8,15 +8,9 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        punycode: false,
-      };
-    }
-    return config;
-  },
+  experimental: {
+    serverComponentsExternalPackages: ['ua-parser-js']
+  }
 }
 
 module.exports = nextConfig
