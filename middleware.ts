@@ -1,46 +1,58 @@
+import { createClient } from '@/utils/supabase/middleware'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { securityHeaders } from './utils/security-headers'
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Skip middleware for static files and api routes
+  if (
+    pathname.startsWith('/_next') || 
+    pathname.startsWith('/api') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
+  }
+
   try {
-    // Skip static files and API routes
-    if (
-      request.nextUrl.pathname.startsWith('/_next') ||
-      request.nextUrl.pathname.startsWith('/api') ||
-      request.nextUrl.pathname.includes('.')
-    ) {
-      return NextResponse.next()
-    }
+    // Create supabase client
+    const { supabase, response } = createClient(request)
 
-    // Protected route check
-    if (request.nextUrl.pathname.startsWith("/protected")) {
-      const hasAuth = request.cookies.has('sb-access-token')
-      if (!hasAuth) {
-        console.warn(`Unauthorized access attempt to ${request.nextUrl.pathname}`)
-        return NextResponse.redirect(new URL("/sign-in", request.url))
-      }
-    }
+    // Check auth status
+    const { data: { session } } = await supabase.auth.getSession()
+
+    // Clone response
+    const res = NextResponse.next()
 
     // Add security headers
-    const response = NextResponse.next()
-    try {
-      response.headers.set('x-frame-options', 'DENY')
-      response.headers.set('x-content-type-options', 'nosniff')
-      response.headers.set('referrer-policy', 'strict-origin-when-cross-origin')
-    } catch (headerError) {
-      console.error('Error setting security headers:', headerError)
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      res.headers.set(key, value)
+    })
+
+    // Handle protected routes
+    if (pathname.startsWith('/protected') && !session) {
+      return NextResponse.redirect(new URL('/sign-in', request.url))
     }
 
-    return response
-  } catch (error) {
-    console.error('Middleware error:', error)
-    return NextResponse.next()
+    return res
+  } catch (e) {
+    // Return basic response with security headers if middleware fails
+    return NextResponse.next({
+      headers: securityHeaders
+    })
   }
 }
 
-// Configure matcher
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico).*)'
-  ]
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    '/((?!_next/static|_next/image|favicon.ico).*)',
+  ],
 }
