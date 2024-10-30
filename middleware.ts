@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)']
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
+  unstable_allowDynamic: [
+    '/node_modules/next/dist/compiled/ua-parser-js/**',
+  ],
 };
 
 const securityHeaders = {
@@ -14,33 +17,27 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
-  try {
-    const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
+  // Basic auth check without user agent parsing
+  const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
+  
+  // Create response with security headers
+  const response = NextResponse.next({
+    headers: securityHeaders
+  });
 
-    // For protected routes, redirect to sign-in if no auth cookie
-    if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
-      const redirectUrl = new URL("/sign-in", request.url);
-      return NextResponse.redirect(redirectUrl, {
-        headers: securityHeaders,
-      });
-    }
-
-    // For home route, redirect to protected if auth cookie exists
-    if (request.nextUrl.pathname === "/" && hasAuthCookie) {
-      const redirectUrl = new URL("/protected", request.url);
-      return NextResponse.redirect(redirectUrl, {
-        headers: securityHeaders,
-      });
-    }
-
-    // For all other routes, just add security headers
-    return NextResponse.next({
-      headers: securityHeaders,
-    });
-  } catch (error) {
-    // If there's an error, return response with security headers
-    return NextResponse.next({
-      headers: securityHeaders,
+  // Protected routes check
+  if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
+    return NextResponse.redirect(new URL("/sign-in", request.url), {
+      headers: securityHeaders
     });
   }
+
+  // Home route redirect
+  if (request.nextUrl.pathname === "/" && hasAuthCookie) {
+    return NextResponse.redirect(new URL("/protected", request.url), {
+      headers: securityHeaders
+    });
+  }
+
+  return response;
 }
