@@ -1,3 +1,4 @@
+/// <reference types="jest" />
 import { NextRequest, NextResponse } from 'next/server'
 import { middleware } from '../middleware'
 
