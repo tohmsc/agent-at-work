@@ -3,8 +3,6 @@ import type { NextRequest } from "next/server";
 
 export const config = {
   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
-  runtime: 'edge',
-  regions: ['iad1'],
 };
 
 const securityHeaders = {
@@ -14,17 +12,28 @@ const securityHeaders = {
 };
 
 export async function middleware(request: NextRequest) {
-  const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
+  try {
+    const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
 
-  if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
-    return NextResponse.redirect(new URL("/sign-in", request.url));
+    if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
+
+    if (request.nextUrl.pathname === "/" && hasAuthCookie) {
+      return NextResponse.redirect(new URL("/protected", request.url));
+    }
+
+    const response = NextResponse.next();
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
+  } catch (e) {
+    // If there's an error, return response with security headers
+    const response = NextResponse.next();
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
   }
-
-  if (request.nextUrl.pathname === "/" && hasAuthCookie) {
-    return NextResponse.redirect(new URL("/protected", request.url));
-  }
-
-  return NextResponse.next({
-    headers: securityHeaders
-  });
 }
