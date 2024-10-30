@@ -2,38 +2,36 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };
 
 const securityHeaders = {
   'x-frame-options': 'DENY',
   'x-content-type-options': 'nosniff',
-  'referrer-policy': 'strict-origin-when-cross-origin'
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'x-xss-protection': '1; mode=block',
+  'strict-transport-security': 'max-age=31536000; includeSubDomains'
 };
 
 export async function middleware(request: NextRequest) {
-  try {
-    const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
+  // Check for auth cookies
+  const hasAuthCookie = request.cookies.has('sb-access-token') || request.cookies.has('sb-refresh-token');
+  const response = NextResponse.next();
 
-    if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
-      return NextResponse.redirect(new URL("/sign-in", request.url));
-    }
+  // Apply security headers to all responses
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
 
-    if (request.nextUrl.pathname === "/" && hasAuthCookie) {
-      return NextResponse.redirect(new URL("/protected", request.url));
-    }
-
-    const response = NextResponse.next();
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    return response;
-  } catch (e) {
-    // If there's an error, return response with security headers
-    const response = NextResponse.next();
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    return response;
+  // Handle protected routes
+  if (request.nextUrl.pathname.startsWith("/protected") && !hasAuthCookie) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
   }
+
+  // Redirect authenticated users from home to protected area
+  if (request.nextUrl.pathname === "/" && hasAuthCookie) {
+    return NextResponse.redirect(new URL("/protected", request.url));
+  }
+
+  return response;
 }
