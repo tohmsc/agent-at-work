@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 import "./globals.css";
 import { Analytics } from '@vercel/analytics/react';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { CSPostHogProvider, PostHogPageview } from './providers'
 
 export const metadata = {
   title: "Agent at Work",
@@ -33,21 +34,24 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={GeistSans.className} suppressHydrationWarning>
-      <body className={GeistSans.className}>
-        <ErrorBoundary>
-          <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-            <div className="flex min-h-screen flex-col">
-              <Header />
-              <main className="flex-1">
-                {children}
-              </main>
-              <Footer />
-            </div>
-            <Toaster />
-            <Analytics />
-          </ThemeProvider>
-        </ErrorBoundary>
-      </body>
+      <CSPostHogProvider>
+        <body className={GeistSans.className}>
+          <PostHogPageview />
+          <ErrorBoundary>
+            <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+              <div className="flex min-h-screen flex-col">
+                <Header />
+                <main className="flex-1">
+                  {children}
+                </main>
+                <Footer />
+              </div>
+              <Toaster />
+              <Analytics />
+            </ThemeProvider>
+          </ErrorBoundary>
+        </body>
+      </CSPostHogProvider>
     </html>
   );
 }
