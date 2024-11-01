@@ -11,6 +11,9 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { use } from "react";
 import { ArrowRight } from "lucide-react";
+import { getStorageUrl } from '@/utils/supabase/storage-url';
+import { ImageLoading } from "./ui/image-loading";
+import Image from "next/image";
 
 function generateAgentSlug(company: string, description: string): string {
   return `${company.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${description.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`.replace(/^-|-$/g, '');
@@ -36,79 +39,102 @@ interface AgentCardProps {
   category: keyof typeof categoryConfig;
   isFree: boolean;
   logo?: string;
+  header_image?: string;
   website_url?: string;
 }
 
-export function AgentCard({ id, company, shortDescription, category, isFree, logo, website_url }: AgentCardProps) {
-  const [generatedLogo, setGeneratedLogo] = useState<string | null>(null);
-  const CategoryIcon = categoryConfig[category.toUpperCase() as keyof typeof categoryConfig]?.icon;
-  
-  useEffect(() => {
-    async function fetchLogo() {
-      if (!logo && website_url) {
-        const logoUrl = await generateLogo(website_url);
-        if (logoUrl) {
-          setGeneratedLogo(logoUrl);
-        }
-      }
-    }
-    fetchLogo();
-  }, [logo, website_url]);
+export function AgentCard({ id, company, shortDescription, category, isFree, logo, header_image, website_url }: AgentCardProps) {
+  const [isLoading, setIsLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
 
-  const displayLogo = logo || generatedLogo || '/placeholder-image.jpg';
+  const getFaviconUrl = (websiteUrl: string | null) => {
+    if (!websiteUrl) return null;
+    try {
+      const url = new URL(websiteUrl);
+      return `https://www.google.com/s2/favicons?sz=32&domain=${url.hostname}`;
+    } catch {
+      return null;
+    }
+  };
+
+  const displayImage = header_image 
+    ? getStorageUrl(header_image)
+    : null;
+    
+  const logoUrl = logo 
+    ? getStorageUrl(logo)
+    : getFaviconUrl(website_url || null);
+
+  const CategoryIcon = categoryConfig[category.toUpperCase() as keyof typeof categoryConfig].icon;
+  const slug = generateAgentSlug(company, shortDescription);
 
   return (
-    <Link href={`/agents/${id}/${generateAgentSlug(company, shortDescription)}`}>
-      <motion.div
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ type: "spring", stiffness: 400, damping: 17 }}
-      >
-        <Card className="overflow-hidden group cursor-pointer border border-border/50 shadow-sm hover:shadow-md transition-all duration-300">
-          {/* Header with Company Name and Category */}
-          <div className="p-4 border-b border-border/50 bg-background flex items-center justify-between">
-            <h3 className="font-bold text-xl tracking-tight">{company}</h3>
-            <Badge 
-              className={cn(
-                "text-sm px-3 py-1 font-medium hover:scale-105 transition-transform border-0", 
-                categoryConfig[category.toUpperCase() as keyof typeof categoryConfig].color,
-                categoryConfig[category.toUpperCase() as keyof typeof categoryConfig].bgColor
-              )}
-            >
-              <CategoryIcon className="h-4 w-4 mr-2" />
-              {category.replace('_', ' ')}
-            </Badge>
-          </div>
-
-          {/* Main Image/Logo Section */}
-          <div className="aspect-square relative bg-background/50 p-6 group/image">
-            <img
-              src={displayLogo}
-              alt={company}
-              className="object-contain w-full h-full transition-all duration-300 group-hover/image:scale-110 group-hover/image:rotate-2"
-            />
-          </div>
-
-          {/* Description Section */}
-          <div className="border-t border-border/50">
-            <div className="p-4 group/desc hover:bg-muted/30 transition-colors">
-              <p className="text-base text-muted-foreground leading-relaxed line-clamp-2 text-center">
-                {shortDescription}
-              </p>
-            </div>
-            
-            {/* View Profile Bar */}
-            <div className="border-t border-border/50 p-3 bg-background group/profile hover:bg-muted/30 transition-colors">
-              <div className="flex items-center justify-between text-sm font-medium">
-                <span className="text-muted-foreground group-hover/profile:text-foreground transition-colors">
-                  View Profile
-                </span>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover/profile:text-foreground group-hover/profile:translate-x-1 transition-all" />
+    <Link href={`/agents/${id}/${slug}`}>
+      <Card className="overflow-hidden h-full transition-colors hover:bg-muted/50 flex flex-col">
+        {/* Header with Company Name and Category */}
+        <div className="p-4 border-b border-border/50 bg-background flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {logoUrl && !imageError && (
+              <div className="relative w-6 h-6">
+                <Image
+                  src={logoUrl}
+                  alt={`${company} Logo`}
+                  fill
+                  className="object-contain"
+                  onError={() => setImageError(true)}
+                />
               </div>
-            </div>
+            )}
+            <h3 className="font-medium text-xl tracking-tight">{company}</h3>
           </div>
-        </Card>
-      </motion.div>
+          <Badge 
+            className={cn(
+              "text-sm px-3 py-1 font-medium hover:scale-105 transition-transform border-0", 
+              categoryConfig[category.toUpperCase() as keyof typeof categoryConfig].color,
+              categoryConfig[category.toUpperCase() as keyof typeof categoryConfig].bgColor
+            )}
+          >
+            <CategoryIcon className="h-4 w-4 mr-2" />
+            {category.replace('_', ' ')}
+          </Badge>
+        </div>
+
+        {/* Header Image */}
+        <div className="relative aspect-video bg-muted">
+          {displayImage && !imageError ? (
+            <Image
+              src={displayImage}
+              alt={`${company} Header`}
+              fill
+              className="object-cover"
+              onLoadingComplete={() => setIsLoading(false)}
+              onError={() => setImageError(true)}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              No preview available
+            </div>
+          )}
+          {isLoading && displayImage && (
+            <div className="absolute inset-0 flex items-center justify-center bg-muted">
+              <ImageLoading />
+            </div>
+          )}
+        </div>
+
+        {/* Description */}
+        <div className="p-4 flex-grow">
+          <p className="text-muted-foreground line-clamp-2">{shortDescription}</p>
+        </div>
+
+        {/* View Profile Bar */}
+        <div className="mt-auto border-t border-border/50 p-3 bg-background">
+          <div className="flex items-center justify-between text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+            <span>View Profile</span>
+            <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-all" />
+          </div>
+        </div>
+      </Card>
     </Link>
   );
 }
